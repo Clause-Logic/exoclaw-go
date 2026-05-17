@@ -1,0 +1,11 @@
+go 1.25.0
+
+use (
+	.
+	./conversation-file
+	./providers/openai
+	./channels/stdin
+	./cmd/exoclaw
+	./tools/workspace
+	./tools/cron
+)

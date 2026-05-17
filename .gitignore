@@ -1,0 +1,27 @@
+# Binaries
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test artefacts
+*.test
+*.out
+coverage.txt
+coverage.html
+profile.out
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# go.work is committed (multi-module layout); go.work.sum is the local
+# checksum DB — Go regenerates it from each module's go.sum, so it's
+# fine either way. Committing keeps `go build` deterministic without
+# a fresh download.
