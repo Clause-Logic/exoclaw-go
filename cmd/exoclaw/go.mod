@@ -3,7 +3,7 @@ module github.com/Clause-Logic/exoclaw-go/cmd/exoclaw
 go 1.25.0
 
 require (
-	github.com/Clause-Logic/exoclaw-go v0.0.0
+	github.com/Clause-Logic/exoclaw-go v0.0.0-20260519175437-0c17ede33b29
 	github.com/Clause-Logic/exoclaw-go/channels/stdin v0.0.0
 	github.com/Clause-Logic/exoclaw-go/conversation-file v0.0.0
 	github.com/Clause-Logic/exoclaw-go/providers/openai v0.0.0
