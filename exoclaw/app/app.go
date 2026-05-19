@@ -9,14 +9,14 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/standd/exoclaw-go/exoclaw/agent"
-	"github.com/standd/exoclaw-go/exoclaw/agent/tools"
-	"github.com/standd/exoclaw-go/exoclaw/bus"
-	"github.com/standd/exoclaw-go/exoclaw/channels"
-	"github.com/standd/exoclaw-go/exoclaw/conversation"
-	"github.com/standd/exoclaw-go/exoclaw/executor"
-	"github.com/standd/exoclaw-go/exoclaw/iterationpolicy"
-	"github.com/standd/exoclaw-go/exoclaw/providers"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/agent"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/agent/tools"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/bus"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/channels"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/conversation"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/executor"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/iterationpolicy"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/providers"
 )
 
 // Exoclaw wires together all exoclaw components and runs the event loop.

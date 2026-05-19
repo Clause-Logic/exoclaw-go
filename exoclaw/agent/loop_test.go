@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/standd/exoclaw-go/exoclaw/agent/tools"
-	"github.com/standd/exoclaw-go/exoclaw/bus"
-	"github.com/standd/exoclaw-go/exoclaw/conversation"
-	"github.com/standd/exoclaw-go/exoclaw/providers"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/agent/tools"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/bus"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/conversation"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/providers"
 )
 
 // Ported from tests/test_loop_coverage.py + tests/test_loop_extension_points.py.

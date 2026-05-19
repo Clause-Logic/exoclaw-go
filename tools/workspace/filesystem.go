@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/standd/exoclaw-go/exoclaw/agent/tools"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/agent/tools"
 )
 
 // Ported from exoclaw_tools_workspace/filesystem.py.

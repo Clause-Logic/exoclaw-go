@@ -3,7 +3,7 @@ package conversationfile
 import (
 	"testing"
 
-	"github.com/standd/exoclaw-go/conversation-file/session"
+	"github.com/Clause-Logic/exoclaw-go/conversation-file/session"
 )
 
 // Ported from tests/test_streaming_history.py.

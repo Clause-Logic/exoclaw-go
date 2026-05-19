@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/standd/exoclaw-go/conversation-file/session"
-	"github.com/standd/exoclaw-go/exoclaw/bus"
-	coreconv "github.com/standd/exoclaw-go/exoclaw/conversation"
-	"github.com/standd/exoclaw-go/exoclaw/providers"
+	"github.com/Clause-Logic/exoclaw-go/conversation-file/session"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/bus"
+	coreconv "github.com/Clause-Logic/exoclaw-go/exoclaw/conversation"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/providers"
 )
 
 // Ported from exoclaw_conversation/conversation.py.

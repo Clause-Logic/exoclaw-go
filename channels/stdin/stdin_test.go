@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/standd/exoclaw-go/exoclaw/bus"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/bus"
 )
 
 func TestChannel_ReadsInboundFromStdin(t *testing.T) {

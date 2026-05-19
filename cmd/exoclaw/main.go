@@ -28,15 +28,15 @@ import (
 	"syscall"
 	"time"
 
-	stdinch "github.com/standd/exoclaw-go/channels/stdin"
-	conv "github.com/standd/exoclaw-go/conversation-file"
-	"github.com/standd/exoclaw-go/exoclaw/agent/tools"
-	"github.com/standd/exoclaw-go/exoclaw/app"
-	"github.com/standd/exoclaw-go/exoclaw/bus"
-	"github.com/standd/exoclaw-go/exoclaw/channels"
-	openaiprov "github.com/standd/exoclaw-go/providers/openai"
-	cron "github.com/standd/exoclaw-go/tools/cron"
-	workspace "github.com/standd/exoclaw-go/tools/workspace"
+	stdinch "github.com/Clause-Logic/exoclaw-go/channels/stdin"
+	conv "github.com/Clause-Logic/exoclaw-go/conversation-file"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/agent/tools"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/app"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/bus"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/channels"
+	openaiprov "github.com/Clause-Logic/exoclaw-go/providers/openai"
+	cron "github.com/Clause-Logic/exoclaw-go/tools/cron"
+	workspace "github.com/Clause-Logic/exoclaw-go/tools/workspace"
 )
 
 func main() {

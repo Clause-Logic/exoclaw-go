@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/standd/exoclaw-go/exoclaw/agent/tools"
-	"github.com/standd/exoclaw-go/exoclaw/conversation"
-	"github.com/standd/exoclaw-go/exoclaw/providers"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/agent/tools"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/conversation"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/providers"
 )
 
 // Ported from tests/test_executor.py.

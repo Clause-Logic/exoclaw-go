@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/standd/exoclaw-go/exoclaw/agent/tools"
-	"github.com/standd/exoclaw-go/exoclaw/conversation"
-	"github.com/standd/exoclaw-go/exoclaw/providers"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/agent/tools"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/conversation"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/providers"
 )
 
 // turnStateKey is the context key under which per-turn message buffer state

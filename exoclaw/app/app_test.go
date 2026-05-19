@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/standd/exoclaw-go/exoclaw/bus"
-	"github.com/standd/exoclaw-go/exoclaw/channels"
-	"github.com/standd/exoclaw-go/exoclaw/conversation"
-	"github.com/standd/exoclaw-go/exoclaw/providers"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/bus"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/channels"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/conversation"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/providers"
 )
 
 // Ported from tests/test_app_coverage.py.

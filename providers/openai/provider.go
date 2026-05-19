@@ -29,8 +29,8 @@ import (
 	"sync"
 	"time"
 
-	xhttp "github.com/standd/exoclaw-go/exoclaw/http"
-	"github.com/standd/exoclaw-go/exoclaw/providers"
+	xhttp "github.com/Clause-Logic/exoclaw-go/exoclaw/http"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/providers"
 )
 
 const alnumChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"

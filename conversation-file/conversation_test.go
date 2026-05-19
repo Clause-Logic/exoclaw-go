@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/standd/exoclaw-go/conversation-file/session"
-	coreconv "github.com/standd/exoclaw-go/exoclaw/conversation"
+	"github.com/Clause-Logic/exoclaw-go/conversation-file/session"
+	coreconv "github.com/Clause-Logic/exoclaw-go/exoclaw/conversation"
 )
 
 // Ported from tests/test_conversation.py — focused on the load-bearing

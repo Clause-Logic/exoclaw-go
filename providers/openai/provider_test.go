@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	xhttp "github.com/standd/exoclaw-go/exoclaw/http"
-	"github.com/standd/exoclaw-go/exoclaw/providers"
+	xhttp "github.com/Clause-Logic/exoclaw-go/exoclaw/http"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/providers"
 )
 
 // Ported from exoclaw-plugins/packages/exoclaw-provider-openai/tests/test_provider_openai.py.

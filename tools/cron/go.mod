@@ -1,7 +1,7 @@
-module github.com/standd/exoclaw-go/tools/cron
+module github.com/Clause-Logic/exoclaw-go/tools/cron
 
 go 1.25.0
 
-require github.com/standd/exoclaw-go v0.0.0
+require github.com/Clause-Logic/exoclaw-go v0.0.0
 
-replace github.com/standd/exoclaw-go => ../../
+replace github.com/Clause-Logic/exoclaw-go => ../../

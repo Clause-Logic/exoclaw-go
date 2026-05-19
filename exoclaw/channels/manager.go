@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/standd/exoclaw-go/exoclaw/bus"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/bus"
 )
 
 // ChannelManager coordinates a set of Channel instances.

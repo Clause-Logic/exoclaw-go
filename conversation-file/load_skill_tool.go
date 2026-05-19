@@ -3,7 +3,7 @@ package conversationfile
 import (
 	"context"
 
-	"github.com/standd/exoclaw-go/exoclaw/agent/tools"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/agent/tools"
 )
 
 // Ported from exoclaw_conversation/load_skill_tool.py.

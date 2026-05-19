@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/standd/exoclaw-go/exoclaw/bus"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/bus"
 )
 
 // Ported from tests/test_channel_manager_coverage.py and micro/test_channels.py.

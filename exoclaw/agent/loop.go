@@ -15,12 +15,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/standd/exoclaw-go/exoclaw/agent/tools"
-	"github.com/standd/exoclaw-go/exoclaw/bus"
-	"github.com/standd/exoclaw-go/exoclaw/conversation"
-	"github.com/standd/exoclaw-go/exoclaw/executor"
-	"github.com/standd/exoclaw-go/exoclaw/iterationpolicy"
-	"github.com/standd/exoclaw-go/exoclaw/providers"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/agent/tools"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/bus"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/conversation"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/executor"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/iterationpolicy"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/providers"
 )
 
 // AgentLoop is the core processing engine.

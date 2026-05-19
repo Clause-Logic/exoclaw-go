@@ -14,8 +14,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/standd/exoclaw-go/exoclaw/bus"
-	"github.com/standd/exoclaw-go/exoclaw/channels"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/bus"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/channels"
 )
 
 // ChannelName is the routing key. OutboundMessage.Channel must match.

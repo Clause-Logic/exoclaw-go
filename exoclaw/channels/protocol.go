@@ -6,7 +6,7 @@ package channels
 import (
 	"context"
 
-	"github.com/standd/exoclaw-go/exoclaw/bus"
+	"github.com/Clause-Logic/exoclaw-go/exoclaw/bus"
 )
 
 // Channel is the protocol any chat channel implementation must satisfy.
