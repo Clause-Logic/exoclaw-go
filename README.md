@@ -14,15 +14,16 @@ recorded version and `main`, and replay the changes here file-by-file.
 
 | Go module | Python source | Version |
 |---|---|---|
-| `exoclaw/` | `exoclaw` (core) | `0.28.0` (commit `9191613`) |
+| `exoclaw/` | `exoclaw` (core) | `0.29.0` (commit `56c8cc4`) |
 | `conversation-file/` | `exoclaw-conversation` | `0.25.0` |
 | `providers/openai/` | `exoclaw-provider-openai` | `0.4.2` |
 | `tools/workspace/` | `exoclaw-tools-workspace` | `0.7.0` |
 | `tools/cron/` | `exoclaw-tools-cron` | `0.9.1` |
+| `tools/openrouter-search/` | `exoclaw-openrouter-search` | `0.2.1` |
 | `channels/stdin/` | `exoclaw-channel-cli` | `0.3.0` |
 | `cmd/exoclaw/` | exoclaw-nanobot composition root (subset) | — |
 
-Last sync: 2026-05-17.
+Last sync: 2026-05-24.
 
 ## Layout
 

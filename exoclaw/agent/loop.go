@@ -32,32 +32,33 @@ import (
 //  4. Executes tool calls
 //  5. Records the turn and sends the response back
 type AgentLoop struct {
-	Bus              bus.Bus
-	Provider         providers.LLMProvider
-	Conversation     conversation.Conversation
-	Model            string
-	MaxIterations    int
-	Temperature      float64
-	MaxTokens        int
-	ReasoningEffort  string
-	Tools            *tools.ToolRegistry
-	IterationPolicy  iterationpolicy.IterationPolicy
-	Executor         executor.Executor
-	Log              *slog.Logger
+	Bus             bus.Bus
+	Provider        providers.LLMProvider
+	Conversation    conversation.Conversation
+	Model           string
+	MaxIterations   int
+	Temperature     float64
+	MaxTokens       int
+	ReasoningEffort string
+	Tools           *tools.ToolRegistry
+	IterationPolicy iterationpolicy.IterationPolicy
+	Executor        executor.Executor
+	Log             *slog.Logger
 
 	// Optional lifecycle callbacks — all default to nil.
-	OnPreContext     func(ctx context.Context, content, sessionKey, channel, chatID string) (string, error)
-	OnPreTool        func(ctx context.Context, name string, params map[string]any, sessionKey string) (string, error)
-	OnPostTurn       func(ctx context.Context, newMsgs []map[string]any, sessionKey, channel, chatID string) error
-	OnMaxIterations  func(ctx context.Context, sessionKey, channel, chatID string) error
-	OnToolCalls      func(ctx context.Context, calls []providers.ToolCallRequest) error
-	OnToolResult     func(ctx context.Context, call providers.ToolCallRequest, result string) error
+	OnPreContext    func(ctx context.Context, content, sessionKey, channel, chatID string) (string, error)
+	OnPreTool       func(ctx context.Context, name string, params map[string]any, sessionKey string) (string, error)
+	OnPostTurn      func(ctx context.Context, newMsgs []map[string]any, sessionKey, channel, chatID string) error
+	OnMaxIterations func(ctx context.Context, sessionKey, channel, chatID string) error
+	OnToolCalls     func(ctx context.Context, calls []providers.ToolCallRequest) error
+	OnToolResult    func(ctx context.Context, call providers.ToolCallRequest, result string) error
+	OnBeforeFinish  func(ctx context.Context, finalContent string, toolsUsed []string, sessionKey string) (string, error)
 	// OnContextOverflow is the deprecated callback path; prefer
 	// Conversation.RecoverFromOverflow.
-	OnContextOverflow    func(ctx context.Context, messages []map[string]any) ([]map[string]any, error)
-	MaxRecoveryAttempts  int
+	OnContextOverflow   func(ctx context.Context, messages []map[string]any) ([]map[string]any, error)
+	MaxRecoveryAttempts int
 
-	extraTools  []tools.Tool
+	extraTools []tools.Tool
 
 	running       bool
 	runMu         sync.Mutex
@@ -70,28 +71,40 @@ type AgentLoop struct {
 
 // Options bundles AgentLoop construction parameters.
 type Options struct {
-	Bus              bus.Bus
-	Provider         providers.LLMProvider
-	Conversation     conversation.Conversation
-	Model            string
-	MaxIterations    int
-	Temperature      float64
-	MaxTokens        int
-	ReasoningEffort  string
-	Tools            []tools.Tool
-	Registry         *tools.ToolRegistry
-	IterationPolicy  iterationpolicy.IterationPolicy
-	Executor         executor.Executor
-	Log              *slog.Logger
+	Bus             bus.Bus
+	Provider        providers.LLMProvider
+	Conversation    conversation.Conversation
+	Model           string
+	MaxIterations   int
+	Temperature     float64
+	MaxTokens       int
+	ReasoningEffort string
+	Tools           []tools.Tool
+	Registry        *tools.ToolRegistry
+	IterationPolicy iterationpolicy.IterationPolicy
+	Executor        executor.Executor
+	Log             *slog.Logger
 
-	OnPreContext         func(ctx context.Context, content, sessionKey, channel, chatID string) (string, error)
-	OnPreTool            func(ctx context.Context, name string, params map[string]any, sessionKey string) (string, error)
-	OnPostTurn           func(ctx context.Context, newMsgs []map[string]any, sessionKey, channel, chatID string) error
-	OnMaxIterations      func(ctx context.Context, sessionKey, channel, chatID string) error
-	OnToolCalls          func(ctx context.Context, calls []providers.ToolCallRequest) error
-	OnToolResult         func(ctx context.Context, call providers.ToolCallRequest, result string) error
-	OnContextOverflow    func(ctx context.Context, messages []map[string]any) ([]map[string]any, error)
-	MaxRecoveryAttempts  int
+	OnPreContext    func(ctx context.Context, content, sessionKey, channel, chatID string) (string, error)
+	OnPreTool       func(ctx context.Context, name string, params map[string]any, sessionKey string) (string, error)
+	OnPostTurn      func(ctx context.Context, newMsgs []map[string]any, sessionKey, channel, chatID string) error
+	OnMaxIterations func(ctx context.Context, sessionKey, channel, chatID string) error
+	OnToolCalls     func(ctx context.Context, calls []providers.ToolCallRequest) error
+	OnToolResult    func(ctx context.Context, call providers.ToolCallRequest, result string) error
+	// OnBeforeFinish is called when the model returns a final (no-tool-call)
+	// response, just before the loop ends. It receives (finalContent,
+	// toolsUsed, sessionKey) and returns an optional follow-up message: a
+	// non-empty return is appended as a user turn and the loop continues (the
+	// model gets another turn); "" ends the turn as usual. Lets a host enforce
+	// a completion condition the model can't be trusted to honour on its own —
+	// e.g. a required closing tool that wasn't called — by re-prompting in
+	// place. The host owns the stopping condition (it MUST eventually return
+	// ""); MaxIterations is the hard backstop. Dispatched through
+	// Executor.RunHook like the other callbacks, so durable executors wrap it
+	// for replay safety.
+	OnBeforeFinish      func(ctx context.Context, finalContent string, toolsUsed []string, sessionKey string) (string, error)
+	OnContextOverflow   func(ctx context.Context, messages []map[string]any) ([]map[string]any, error)
+	MaxRecoveryAttempts int
 }
 
 // New constructs an AgentLoop from Options. Mirrors AgentLoop.__init__ from
@@ -160,6 +173,7 @@ func New(opts Options) *AgentLoop {
 		OnMaxIterations:     opts.OnMaxIterations,
 		OnToolCalls:         opts.OnToolCalls,
 		OnToolResult:        opts.OnToolResult,
+		OnBeforeFinish:      opts.OnBeforeFinish,
 		OnContextOverflow:   opts.OnContextOverflow,
 		MaxRecoveryAttempts: maxRec,
 		extraTools:          opts.Tools,
@@ -566,6 +580,44 @@ func (a *AgentLoop) runAgentLoop(ctx context.Context, initialMessages []map[stri
 			if err := flush(msg2); err != nil {
 				return "", toolsUsed, a.Executor.LoadMessages(), err
 			}
+			// Before-finish hook: the model stopped (no tool calls). A host may
+			// decide the turn isn't really done — e.g. a required closing tool
+			// wasn't called — and return a follow-up message to re-drive the
+			// loop in place. A non-empty return is appended as a user turn (same
+			// path as every other message, so it reaches both the in-memory
+			// buffer the provider reads and the durable store) and the loop
+			// continues; "" ends the turn. The host owns the stopping condition;
+			// MaxIterations backstops.
+			if a.OnBeforeFinish != nil {
+				// Prefer the loop's own sessionID — set on every real path.
+				// currentTCtx is only set by processMessage and is unset/stale
+				// on the system-message and durable runTurn paths, so it's the
+				// fallback, not the source of truth.
+				sk := sessionID
+				if sk == "" {
+					a.currentTCtxMu.Lock()
+					if a.currentTCtx != nil {
+						sk = a.currentTCtx.SessionKey
+					}
+					a.currentTCtxMu.Unlock()
+				}
+				res, herr := a.Executor.RunHook(ctx, func(c context.Context, _ ...any) (any, error) {
+					return a.OnBeforeFinish(c, clean, append([]string(nil), toolsUsed...), sk)
+				})
+				if herr != nil {
+					return "", toolsUsed, a.Executor.LoadMessages(), herr
+				}
+				followup, _ := res.(string)
+				if followup != "" {
+					nudge := map[string]any{"role": "user", "content": followup}
+					a.Executor.AppendMessages([]map[string]any{nudge})
+					if err := flush(nudge); err != nil {
+						return "", toolsUsed, a.Executor.LoadMessages(), err
+					}
+					a.Log.Info("turn_continue", "reason", "before_finish")
+					continue
+				}
+			}
 			finalContent = clean
 			finalContentSet = true
 			break
@@ -655,12 +707,19 @@ func (a *AgentLoop) processTurnInline(ctx context.Context, sessionID, message st
 		return "", nil, err
 	}
 
-	var newMsgs []map[string]any
-	if len(initial) > 0 {
-		newMsgs = allMsgs[len(initial)-1:]
-	} else {
-		newMsgs = allMsgs
+	// New messages are everything after the prior (initial minus the user
+	// turn the loop appended onto it). Python slices ``all_msgs[len(initial)-1:]``,
+	// which clamps when all_msgs is shorter than the prompt — e.g. an
+	// error-finish that breaks before appending the assistant turn. Go panics
+	// on an out-of-range low bound, so clamp explicitly to match.
+	cut := len(initial) - 1
+	if cut < 0 {
+		cut = 0
 	}
+	if cut > len(allMsgs) {
+		cut = len(allMsgs)
+	}
+	newMsgs := allMsgs[cut:]
 
 	if appendable {
 		if err := a.Executor.PostTurn(ctx, a.Conversation, sessionID); err != nil {

@@ -20,10 +20,10 @@ import (
 // ----------------------------------------------------------------------
 
 type stubConversation struct {
-	prior     []map[string]any
-	recorded  []map[string]any
-	cleared   bool
-	mu        sync.Mutex
+	prior    []map[string]any
+	recorded []map[string]any
+	cleared  bool
+	mu       sync.Mutex
 }
 
 func newStubConv() *stubConversation {
@@ -51,7 +51,7 @@ func (c *stubConversation) Clear(ctx context.Context, sid string) (bool, error) 
 func (c *stubConversation) ListSessions() []map[string]any { return nil }
 
 type stubProvider struct {
-	calls int
+	calls     int
 	responses []*providers.LLMResponse
 }
 
@@ -271,5 +271,144 @@ func TestLoop_RunDispatchesInboundMessage(t *testing.T) {
 	}
 	if out.Content != "hello" {
 		t.Fatalf("out: %s", out.Content)
+	}
+}
+
+// ----------------------------------------------------------------------
+// on_before_finish hook — ported from tests/test_loop_extension_points.py
+// ----------------------------------------------------------------------
+
+func TestLoop_OnBeforeFinish_InjectsAndContinues(t *testing.T) {
+	conv := newStubConv()
+	prov := &stubProvider{responses: []*providers.LLMResponse{
+		plainResponse("partial"),
+		plainResponse("now complete"),
+	}}
+	var seen []string
+	loop := New(Options{
+		Bus:          bus.NewMessageBus(),
+		Provider:     prov,
+		Conversation: conv,
+		OnBeforeFinish: func(ctx context.Context, final string, toolsUsed []string, sk string) (string, error) {
+			seen = append(seen, final)
+			if len(seen) == 1 {
+				return "you stopped early — keep going", nil
+			}
+			return "", nil
+		},
+	})
+	out, err := loop.ProcessDirect(context.Background(), "hi", "cli:direct", "cli", "direct", nil, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != "now complete" {
+		t.Fatalf("out: %q", out)
+	}
+	if prov.calls != 2 {
+		t.Fatalf("provider calls: %d", prov.calls)
+	}
+	if len(seen) != 2 || seen[0] != "partial" || seen[1] != "now complete" {
+		t.Fatalf("hook saw: %v", seen)
+	}
+}
+
+func TestLoop_OnBeforeFinish_EmptyReturnEndsTurn(t *testing.T) {
+	conv := newStubConv()
+	prov := &stubProvider{responses: []*providers.LLMResponse{plainResponse("all done")}}
+	loop := New(Options{
+		Bus:          bus.NewMessageBus(),
+		Provider:     prov,
+		Conversation: conv,
+		OnBeforeFinish: func(ctx context.Context, final string, toolsUsed []string, sk string) (string, error) {
+			return "", nil
+		},
+	})
+	out, _ := loop.ProcessDirect(context.Background(), "hi", "cli:direct", "cli", "direct", nil, "")
+	if out != "all done" {
+		t.Fatalf("out: %q", out)
+	}
+	if prov.calls != 1 {
+		t.Fatalf("provider calls: %d", prov.calls)
+	}
+}
+
+func TestLoop_OnBeforeFinish_SeesToolsUsedAndSessionKey(t *testing.T) {
+	conv := newStubConv()
+	tool := newRecordingTool("record_thread", "ok")
+	prov := &stubProvider{responses: []*providers.LLMResponse{
+		toolCallResponse("c1", "record_thread", map[string]any{}),
+		plainResponse("done"),
+	}}
+	var gotTools []string
+	var gotSK string
+	loop := New(Options{
+		Bus:          bus.NewMessageBus(),
+		Provider:     prov,
+		Conversation: conv,
+		Tools:        []tools.Tool{tool},
+		OnBeforeFinish: func(ctx context.Context, final string, toolsUsed []string, sk string) (string, error) {
+			gotTools = toolsUsed
+			gotSK = sk
+			return "", nil
+		},
+	})
+	if _, err := loop.ProcessDirect(context.Background(), "go", "cli:direct", "cli", "direct", nil, ""); err != nil {
+		t.Fatal(err)
+	}
+	if len(gotTools) != 1 || gotTools[0] != "record_thread" {
+		t.Fatalf("toolsUsed: %v", gotTools)
+	}
+	if gotSK != "cli:direct" {
+		t.Fatalf("sessionKey: %q", gotSK)
+	}
+}
+
+func TestLoop_OnBeforeFinish_NotCalledOnError(t *testing.T) {
+	conv := newStubConv()
+	errContent := "boom"
+	prov := &stubProvider{responses: []*providers.LLMResponse{
+		{Content: &errContent, FinishReason: "error"},
+	}}
+	called := false
+	loop := New(Options{
+		Bus:          bus.NewMessageBus(),
+		Provider:     prov,
+		Conversation: conv,
+		OnBeforeFinish: func(ctx context.Context, final string, toolsUsed []string, sk string) (string, error) {
+			called = true
+			return "retry", nil
+		},
+	})
+	out, _ := loop.ProcessDirect(context.Background(), "hi", "cli:direct", "cli", "direct", nil, "")
+	if called {
+		t.Fatal("hook should not fire on an error finish")
+	}
+	if out != "boom" {
+		t.Fatalf("out: %q", out)
+	}
+}
+
+func TestLoop_OnBeforeFinish_MaxIterationsBackstop(t *testing.T) {
+	conv := newStubConv()
+	responses := make([]*providers.LLMResponse, 5)
+	for i := range responses {
+		responses[i] = plainResponse("still not done")
+	}
+	prov := &stubProvider{responses: responses}
+	loop := New(Options{
+		Bus:           bus.NewMessageBus(),
+		Provider:      prov,
+		Conversation:  conv,
+		MaxIterations: 3,
+		OnBeforeFinish: func(ctx context.Context, final string, toolsUsed []string, sk string) (string, error) {
+			return "go again", nil
+		},
+	})
+	out, _ := loop.ProcessDirect(context.Background(), "hi", "cli:direct", "cli", "direct", nil, "")
+	if prov.calls != 3 {
+		t.Fatalf("provider calls: %d (expected 3 — the backstop)", prov.calls)
+	}
+	if !strings.Contains(out, "maximum number of tool call iterations") {
+		t.Fatalf("expected limit message, got: %q", out)
 	}
 }
