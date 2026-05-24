@@ -471,6 +471,7 @@ func (a *AgentLoop) runAgentLoop(ctx context.Context, initialMessages []map[stri
 				result := ""
 				contentFile := ""
 
+				var rejection string
 				if a.OnPreTool != nil {
 					sk := ""
 					a.currentTCtxMu.Lock()
@@ -478,10 +479,44 @@ func (a *AgentLoop) runAgentLoop(ctx context.Context, initialMessages []map[stri
 						sk = a.currentTCtx.SessionKey
 					}
 					a.currentTCtxMu.Unlock()
-					rejection, rerr := a.OnPreTool(ctx, tc.Name, tc.Arguments, sk)
+					rej, rerr := a.OnPreTool(ctx, tc.Name, tc.Arguments, sk)
 					if rerr != nil {
 						execErr = rerr
-					} else if rejection != "" {
+					} else {
+						rejection = rej
+					}
+				}
+				// before_tool decider (via the Conversation) composes with the
+				// global OnPreTool: it may further mutate the args or veto the
+				// call. The Conversation owns how any hooks behind it collapse
+				// into this one result — the loop just applies it.
+				if execErr == nil && rejection == "" {
+					if d, ok := a.Conversation.(BeforeToolDecider); ok {
+						hc := a.makeHookContext(BeforeToolEvent)
+						hc.ToolName = tc.Name
+						// Copy: a decider mutating hc.Params in place must NOT
+						// change the call — only an explicit
+						// BeforeToolResult.Params does (applied below).
+						argsCopy := make(map[string]any, len(tc.Arguments))
+						for k, v := range tc.Arguments {
+							argsCopy[k] = v
+						}
+						hc.Params = argsCopy
+						if bt := a.callBeforeTool(ctx, d, hc); bt != nil {
+							if bt.Params != nil {
+								tc.Arguments = bt.Params
+							}
+							if bt.Block {
+								rejection = bt.BlockReason
+								if rejection == "" {
+									rejection = "blocked"
+								}
+							}
+						}
+					}
+				}
+				if execErr == nil {
+					if rejection != "" {
 						status = "rejected"
 						rejPreview := rejection
 						if len(rejPreview) > 100 {
@@ -496,8 +531,6 @@ func (a *AgentLoop) runAgentLoop(ctx context.Context, initialMessages []map[stri
 					} else {
 						result, contentFile, execErr = a.invokeTool(ctx, tc)
 					}
-				} else {
-					result, contentFile, execErr = a.invokeTool(ctx, tc)
 				}
 				if execErr != nil {
 					status = "error"
@@ -618,6 +651,24 @@ func (a *AgentLoop) runAgentLoop(ctx context.Context, initialMessages []map[stri
 					continue
 				}
 			}
+			// before_finish decider (via the Conversation) composes with the
+			// global OnBeforeFinish: re-prompt a model that stopped without a
+			// required tool. A non-empty ContinueMessage is appended as a user
+			// turn and the loop continues; empty lets the turn end.
+			if d, ok := a.Conversation.(BeforeFinishDecider); ok {
+				hc := a.makeHookContext(BeforeFinishEvent)
+				hc.FinalContent = clean
+				hc.ToolsUsed = append([]string(nil), toolsUsed...)
+				if bf := a.callBeforeFinish(ctx, d, hc); bf != nil && bf.ContinueMessage != "" {
+					nudge := map[string]any{"role": "user", "content": bf.ContinueMessage}
+					a.Executor.AppendMessages([]map[string]any{nudge})
+					if err := flush(nudge); err != nil {
+						return "", toolsUsed, a.Executor.LoadMessages(), err
+					}
+					a.Log.Info("turn_continue", "reason", "before_finish")
+					continue
+				}
+			}
 			finalContent = clean
 			finalContentSet = true
 			break
@@ -649,6 +700,76 @@ func (a *AgentLoop) runAgentLoop(ctx context.Context, initialMessages []map[stri
 	}
 
 	return finalContent, toolsUsed, a.Executor.LoadMessages(), nil
+}
+
+// makeHookContext builds the read-only HookContext for a lifecycle seam: the
+// per-run bag (from the Conversation if it implements RunContexter) and a copy
+// of the live transcript. Mirrors AgentLoop._make_hook_context.
+func (a *AgentLoop) makeHookContext(event string) *HookContext {
+	var runCtx map[string]any
+	if rc, ok := a.Conversation.(RunContexter); ok {
+		// Shallow copy: read-only context for hooks. A decider mutating
+		// ctx.RunContext must not touch the conversation's bag or leak into
+		// later seams (same posture as the messages copy below).
+		if src := rc.RunContext(); src != nil {
+			runCtx = make(map[string]any, len(src))
+			for k, v := range src {
+				runCtx[k] = v
+			}
+		}
+	}
+	// Per-map copy: Messages is a read-only transcript for hooks. LoadMessages
+	// returns the same map objects as the executor's in-flight buffer, so a
+	// hook mutating one would corrupt what the provider sees next iteration.
+	src := a.Executor.LoadMessages()
+	msgs := make([]map[string]any, len(src))
+	for i, m := range src {
+		cp := make(map[string]any, len(m))
+		for k, v := range m {
+			cp[k] = v
+		}
+		msgs[i] = cp
+	}
+	return &HookContext{
+		Event:      event,
+		RunContext: runCtx,
+		Messages:   msgs,
+	}
+}
+
+// callBeforeTool invokes a before_tool decider, logging and swallowing any
+// error or panic as "no decision" — a buggy consumer must not take down a turn
+// (mirrors the exception-swallowing in Python's _call_decider).
+func (a *AgentLoop) callBeforeTool(ctx context.Context, d BeforeToolDecider, hc *HookContext) (res *BeforeToolResult) {
+	defer func() {
+		if r := recover(); r != nil {
+			a.Log.Error("hook_decider_error", "hook.event", BeforeToolEvent, "panic", r)
+			res = nil
+		}
+	}()
+	r, err := d.BeforeTool(ctx, hc)
+	if err != nil {
+		a.Log.Error("hook_decider_error", "hook.event", BeforeToolEvent, "err", err)
+		return nil
+	}
+	return r
+}
+
+// callBeforeFinish invokes a before_finish decider with the same
+// error/panic-swallowing robustness as callBeforeTool.
+func (a *AgentLoop) callBeforeFinish(ctx context.Context, d BeforeFinishDecider, hc *HookContext) (res *BeforeFinishResult) {
+	defer func() {
+		if r := recover(); r != nil {
+			a.Log.Error("hook_decider_error", "hook.event", BeforeFinishEvent, "panic", r)
+			res = nil
+		}
+	}()
+	r, err := d.BeforeFinish(ctx, hc)
+	if err != nil {
+		a.Log.Error("hook_decider_error", "hook.event", BeforeFinishEvent, "err", err)
+		return nil
+	}
+	return r
 }
 
 // ProcessTurn executes a single turn: build prompt, run agent loop, record.

@@ -49,6 +49,14 @@ type ActiveToolsProvider interface {
 	ActiveTools() map[string]struct{}
 }
 
+// Lifecycle-hook decider seams (before_tool / before_finish / run_context) are
+// further optional Conversation capabilities, kept OFF this interface — same
+// reasoning as ActiveToolsProvider — so adding them doesn't force every
+// structural impl to define them. They live as separate interfaces in the
+// agent package (agent.BeforeToolDecider / agent.BeforeFinishDecider /
+// agent.RunContexter) because they reference agent.HookContext; the loop
+// type-asserts each with a no-op fallback. See exoclaw/agent/hooks.go.
+
 // AppendableConversation is the opt-in extension for implementations that
 // can persist one message at a time as the turn progresses.
 //

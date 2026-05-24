@@ -25,9 +25,9 @@ type turnStateKey struct{}
 
 // turnState holds the per-turn buffer for a DirectExecutor.
 type turnState struct {
-	mu     sync.Mutex
-	prior  PriorSource
-	delta  []map[string]any
+	mu    sync.Mutex
+	prior PriorSource
+	delta []map[string]any
 	// scratch tracks scratch-file paths written by streaming tool results.
 	// Cleaned up in PostTurn.
 	scratch []string

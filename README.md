@@ -14,7 +14,7 @@ recorded version and `main`, and replay the changes here file-by-file.
 
 | Go module | Python source | Version |
 |---|---|---|
-| `exoclaw/` | `exoclaw` (core) | `0.29.0` (commit `56c8cc4`) |
+| `exoclaw/` | `exoclaw` (core) | `0.30.2` (commit `a418e16`) |
 | `conversation-file/` | `exoclaw-conversation` | `0.25.0` |
 | `providers/openai/` | `exoclaw-provider-openai` | `0.4.2` |
 | `tools/workspace/` | `exoclaw-tools-workspace` | `0.7.0` |
