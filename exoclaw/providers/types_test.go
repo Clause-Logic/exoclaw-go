@@ -7,6 +7,38 @@ import (
 
 // Ported from tests/test_provider_types.py.
 
+func TestDropMalformedToolCalls(t *testing.T) {
+	t.Run("drops blank-name calls, keeps valid ones", func(t *testing.T) {
+		r := &LLMResponse{ToolCalls: []ToolCallRequest{
+			{ID: "1", Name: "search"},
+			{ID: "2", Name: ""},
+			{ID: "3", Name: "   "},
+			{ID: "4", Name: "fetch"},
+		}}
+		if n := r.DropMalformedToolCalls(); n != 2 {
+			t.Fatalf("dropped = %d, want 2", n)
+		}
+		if len(r.ToolCalls) != 2 || r.ToolCalls[0].Name != "search" || r.ToolCalls[1].Name != "fetch" {
+			t.Fatalf("kept = %+v, want [search fetch]", r.ToolCalls)
+		}
+	})
+	t.Run("all-malformed leaves no tool calls", func(t *testing.T) {
+		r := &LLMResponse{ToolCalls: []ToolCallRequest{{ID: "1", Name: ""}}}
+		if n := r.DropMalformedToolCalls(); n != 1 {
+			t.Fatalf("dropped = %d, want 1", n)
+		}
+		if r.HasToolCalls() {
+			t.Fatalf("HasToolCalls should be false after dropping the only (malformed) call")
+		}
+	})
+	t.Run("no tool calls is a no-op", func(t *testing.T) {
+		r := &LLMResponse{}
+		if n := r.DropMalformedToolCalls(); n != 0 {
+			t.Fatalf("dropped = %d, want 0", n)
+		}
+	})
+}
+
 func TestToolCallRequest_Constructor(t *testing.T) {
 	req := ToolCallRequest{ID: "call-7", Name: "search", Arguments: map[string]any{"q": "hi"}}
 	if req.ID != "call-7" || req.Name != "search" {

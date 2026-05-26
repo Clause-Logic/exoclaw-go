@@ -3,6 +3,8 @@
 // Ported from exoclaw/providers/types.py and providers/protocol.py.
 package providers
 
+import "strings"
+
 // ContextWindowExceededError is returned by providers when the prompt exceeds
 // the model's context window.
 type ContextWindowExceededError struct {
@@ -36,6 +38,32 @@ type LLMResponse struct {
 // HasToolCalls reports whether the response includes any tool calls.
 func (r *LLMResponse) HasToolCalls() bool {
 	return len(r.ToolCalls) > 0
+}
+
+// DropMalformedToolCalls removes tool calls with a blank function name and
+// returns how many were dropped. Some models (notably gemini-flash) degenerate
+// into emitting finish_reason=tool_calls with a null-named call. Left in,
+// HasToolCalls stays true and the agent loop tries to dispatch a nameless tool,
+// which never resolves — so the loop neither makes progress nor reaches the
+// no-tool-call finish path, and spins to the iteration cap with no output.
+// Dropping them lets an all-malformed response fall through to the normal
+// finish (firing the before-finish nudge), while a mixed response keeps its
+// valid calls.
+func (r *LLMResponse) DropMalformedToolCalls() int {
+	if len(r.ToolCalls) == 0 {
+		return 0
+	}
+	kept := r.ToolCalls[:0]
+	dropped := 0
+	for _, tc := range r.ToolCalls {
+		if strings.TrimSpace(tc.Name) == "" {
+			dropped++
+			continue
+		}
+		kept = append(kept, tc)
+	}
+	r.ToolCalls = kept
+	return dropped
 }
 
 // JSONSchema configures structured outputs, including a JSON Schema.

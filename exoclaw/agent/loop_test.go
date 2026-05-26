@@ -312,6 +312,48 @@ func TestLoop_OnBeforeFinish_InjectsAndContinues(t *testing.T) {
 	}
 }
 
+// TestLoop_MalformedToolCallRoutesToFinish guards the gemini-flash degeneration
+// loop: a response with finish_reason=tool_calls but a blank-name tool call must
+// be treated as a normal no-tool-call finish (reaching OnBeforeFinish) — NOT
+// dispatched as a nameless tool, which never resolves and would spin the loop to
+// MaxIterations. The second (plain) response only gets consumed in the broken
+// case, so prov.calls and the content OnBeforeFinish sees both distinguish fixed
+// from broken.
+func TestLoop_MalformedToolCallRoutesToFinish(t *testing.T) {
+	conv := newStubConv()
+	content := "Let me grab a few more sources"
+	malformed := &providers.LLMResponse{
+		Content:      &content,
+		FinishReason: "tool_calls",
+		ToolCalls:    []providers.ToolCallRequest{{ID: "c1", Name: "", Arguments: map[string]any{}}},
+	}
+	prov := &stubProvider{responses: []*providers.LLMResponse{malformed, plainResponse("done")}}
+	var finishedWith []string
+	loop := New(Options{
+		Bus:           bus.NewMessageBus(),
+		Provider:      prov,
+		Conversation:  conv,
+		MaxIterations: 5,
+		OnBeforeFinish: func(ctx context.Context, final string, toolsUsed []string, sk string) (string, error) {
+			finishedWith = append(finishedWith, final)
+			return "", nil // end the turn
+		},
+	})
+	out, err := loop.ProcessDirect(context.Background(), "hi", "cli:direct", "cli", "direct", nil, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prov.calls != 1 {
+		t.Fatalf("provider calls = %d, want 1 — malformed tool call should finish, not spin/continue", prov.calls)
+	}
+	if len(finishedWith) != 1 || finishedWith[0] != content {
+		t.Fatalf("OnBeforeFinish saw %v, want [%q] — malformed call was not routed to the finish path", finishedWith, content)
+	}
+	if out != content {
+		t.Fatalf("out = %q, want %q", out, content)
+	}
+}
+
 func TestLoop_OnBeforeFinish_EmptyReturnEndsTurn(t *testing.T) {
 	conv := newStubConv()
 	prov := &stubProvider{responses: []*providers.LLMResponse{plainResponse("all done")}}

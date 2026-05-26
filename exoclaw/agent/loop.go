@@ -405,6 +405,16 @@ func (a *AgentLoop) runAgentLoop(ctx context.Context, initialMessages []map[stri
 			return "", toolsUsed, a.Executor.LoadMessages(), err
 		}
 
+		// Strip malformed (blank-name) tool calls before deciding the branch:
+		// a degenerate model can emit finish_reason=tool_calls with a null-named
+		// call, which would otherwise dispatch a nameless tool, never finish, and
+		// spin to MaxIterations. Dropping them routes an all-malformed response to
+		// the normal no-tool-call finish path (and its before-finish nudge).
+		if dropped := response.DropMalformedToolCalls(); dropped > 0 {
+			a.Log.Warn("dropped_malformed_tool_calls",
+				"count", dropped, "iteration", iteration, "finish.reason", response.FinishReason)
+		}
+
 		if response.HasToolCalls() {
 			if onProgress != nil {
 				if response.Content != nil {
