@@ -358,6 +358,14 @@ type ContextBuilder struct {
 	Memory        MemoryBackend
 	ContextWindow int
 
+	// SuppressLoadSkillAdvertisement drops the "# Skills … call the load_skill
+	// tool" prompt block. Set it when the run does NOT wire the load_skill tool
+	// into its tool list (e.g. agent-core-go deployments with pre-activated
+	// skills): advertising a tool the model can't call makes it hallucinate
+	// load_skill calls that fail with ToolNotFound. Zero value preserves the
+	// default (advertise) for consumers like the exoclaw CLI that do wire it.
+	SuppressLoadSkillAdvertisement bool
+
 	activeOptionalTools map[string]struct{}
 }
 
@@ -458,10 +466,12 @@ func (b *ContextBuilder) BuildSystemPrompt(opts BuildSystemPromptOptions) string
 		if hooks := b.Skills.GetBootstrapInjections(); len(hooks) > 0 {
 			parts = append(parts, strings.Join(hooks, "\n\n"))
 		}
-		if summary := b.Skills.BuildSkillsSummary(); summary != "" {
-			parts = append(parts, "# Skills\n\nThe following skills are available. To activate a skill and its tools, "+
-				"call the load_skill tool with the skill name.\n"+
-				"Skills with available=\"false\" need dependencies installed first.\n\n"+summary)
+		if !b.SuppressLoadSkillAdvertisement {
+			if summary := b.Skills.BuildSkillsSummary(); summary != "" {
+				parts = append(parts, "# Skills\n\nThe following skills are available. To activate a skill and its tools, "+
+					"call the load_skill tool with the skill name.\n"+
+					"Skills with available=\"false\" need dependencies installed first.\n\n"+summary)
+			}
 		}
 	}
 
